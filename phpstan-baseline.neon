@@ -1,0 +1,121 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$callback of function spl_autoload_register expects \(callable\(string\)\: void\)\|null, array\{''WpOrg\\\\Requests\\\\Autoload'', ''load''\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Autoload.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between true and true will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: src/Autoload.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Cookie.php
+
+		-
+			message: '#^WpOrg\\Requests\\Utility\\CaseInsensitiveDictionary does not accept string\|true\.$#'
+			identifier: offsetAssign.valueType
+			count: 1
+			path: src/Cookie.php
+
+		-
+			message: '#^PHPDoc type bool\|int of property WpOrg\\Requests\\Exception\\Http\\StatusUnknown\:\:\$code is not covariant with PHPDoc type int of overridden property WpOrg\\Requests\\Exception\\Http\:\:\$code\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: src/Exception/Http/StatusUnknown.php
+
+		-
+			message: '#^PHPDoc tag @internal has invalid value \(\(Testing found regex was the fastest implementation\)\)\: Unexpected token "found", expected ''\)'' at offset 100 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/IdnaEncoder.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/Iri.php
+
+		-
+			message: '#^Property WpOrg\\Requests\\Iri\:\:\$ifragment \(string\) does not accept null\.$#'
+			identifier: assign.propertyType
+			count: 3
+			path: src/Iri.php
+
+		-
+			message: '#^Variable \$character might not be defined\.$#'
+			identifier: variable.undefined
+			count: 5
+			path: src/Iri.php
+
+		-
+			message: '#^Variable \$length might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: src/Iri.php
+
+		-
+			message: '#^Variable \$start might not be defined\.$#'
+			identifier: variable.undefined
+			count: 3
+			path: src/Iri.php
+
+		-
+			message: '#^Variable \$valid might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Iri.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Requests.php
+
+		-
+			message: '#^Property WpOrg\\Requests\\Response\:\:\$cookies \(WpOrg\\Requests\\Cookie\\Jar\) does not accept default value of type array\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: src/Response.php
+
+		-
+			message: '#^Property WpOrg\\Requests\\Response\:\:\$headers \(WpOrg\\Requests\\Response\\Headers\) does not accept default value of type array\.$#'
+			identifier: property.defaultValue
+			count: 1
+			path: src/Response.php
+
+		-
+			message: '#^Parameter \#1 \$handle of function curl_close expects CurlHandle, resource given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Transport/Curl.php
+
+		-
+			message: '#^Parameter \#3 \$value of function curl_setopt expects bool, int given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Transport/Curl.php
+
+		-
+			message: '#^Parameter \#3 \$value of function curl_setopt expects int, float given\.$#'
+			identifier: argument.type
+			count: 4
+			path: src/Transport/Curl.php
+
+		-
+			message: '#^Property WpOrg\\Requests\\Transport\\Curl\:\:\$handle \(CurlHandle\|resource\) is never assigned resource so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Transport/Curl.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: src/Transport/Fsockopen.php

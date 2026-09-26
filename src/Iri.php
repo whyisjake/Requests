@@ -57,13 +57,13 @@ use WpOrg\Requests\Utility\InputValidator;
  * @property string $iri IRI we're working with
  * @property-read string $uri IRI in URI form, {@see \WpOrg\Requests\Iri::to_uri()}
  * @property string $scheme Scheme part of the IRI
- * @property string $authority Authority part, formatted for a URI (userinfo + host + port)
- * @property string $iauthority Authority part of the IRI (userinfo + host + port)
+ * @property string|null $authority Authority part, formatted for a URI (userinfo + host + port)
+ * @property string|null $iauthority Authority part of the IRI (userinfo + host + port)
  * @property string $userinfo Userinfo part, formatted for a URI (after '://' and before '@')
  * @property string $iuserinfo Userinfo part of the IRI (after '://' and before '@')
  * @property string $host Host part, formatted for a URI
  * @property string $ihost Host part of the IRI
- * @property string $port Port part of the IRI (after ':')
+ * @property int|null $port Port part of the IRI (after ':')
  * @property string $path Path part, formatted for a URI (after first '/')
  * @property string $ipath Path part of the IRI (after first '/')
  * @property string $query Query part, formatted for a URI (after '?')
@@ -96,7 +96,7 @@ class Iri {
 	/**
 	 * Port
 	 *
-	 * @var string|null
+	 * @var int|null
 	 */
 	protected $port = null;
 
@@ -830,8 +830,9 @@ class Iri {
 		}
 
 		if (($port_start = strpos($remaining, ':', (strpos($remaining, ']') ?: 0))) !== false) {
-			$port = substr($remaining, $port_start + 1);
-			if ($port === false || $port === '') {
+			// substr() returns false instead of '' on PHP < 8.0, hence the cast.
+			$port = (string) substr($remaining, $port_start + 1);
+			if ($port === '') {
 				$port = null;
 			}
 			$remaining = substr($remaining, 0, $port_start);
@@ -1092,7 +1093,7 @@ class Iri {
 	/**
 	 * Get the complete authority
 	 *
-	 * @return string
+	 * @return string|null Null when the IRI has no authority component.
 	 */
 	protected function get_authority() {
 		$iauthority = $this->get_iauthority();
