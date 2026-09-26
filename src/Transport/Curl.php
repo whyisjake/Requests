@@ -329,14 +329,13 @@ final class Curl implements Transport {
 
 			while ($done = curl_multi_info_read($multi)) {
 				if ($done['handle'] === $this->handle && $done['result'] !== CURLE_OK) {
-					$error = sprintf(
+					$error  = sprintf(
 						'cURL error %s: %s',
 						$done['result'],
 						curl_error($this->handle)
 					);
-					curl_multi_remove_handle($multi, $this->handle);
-					curl_multi_close($multi);
-					throw new Exception($error, 'curlerror', $this->handle);
+					$handle = $this->release_stream_handle($multi);
+					throw new Exception($error, 'curlerror', $handle);
 				}
 			}
 
@@ -358,9 +357,8 @@ final class Curl implements Transport {
 
 			$remaining = $deadline - microtime(true);
 			if ($remaining <= 0) {
-				curl_multi_remove_handle($multi, $this->handle);
-				curl_multi_close($multi);
-				throw new Exception('Stream timed out while waiting for the response headers', 'timeout', $this->handle);
+				$handle = $this->release_stream_handle($multi);
+				throw new Exception('Stream timed out while waiting for the response headers', 'timeout', $handle);
 			}
 
 			if (curl_multi_select($multi, min(1.0, $remaining)) === -1) {
@@ -386,6 +384,36 @@ final class Curl implements Transport {
 		$options['hooks']->dispatch('curl.after_request', [&$this->headers, &$this->info]);
 
 		return $this->headers;
+	}
+
+	/**
+	 * Tear down a streamed request which failed before its headers arrived.
+	 *
+	 * The handle was reconfigured for streaming (no total timeout, identity
+	 * encoding, content decoding disabled), so it must not be reused for a
+	 * later request on this instance: release it and let setup_handle()
+	 * initialise a fresh one, exactly as the successful hand-off does.
+	 *
+	 * @param resource|\CurlMultiHandle $multi cURL multi handle the easy handle is attached to.
+	 * @return resource|\CurlHandle The released easy handle, for use as exception data.
+	 */
+	private function release_stream_handle($multi) {
+		$handle = $this->handle;
+
+		curl_setopt($handle, CURLOPT_HEADERFUNCTION, null);
+		curl_setopt($handle, CURLOPT_WRITEFUNCTION, null);
+		curl_multi_remove_handle($multi, $handle);
+		curl_multi_close($multi);
+
+		if (is_resource($handle)) {
+			// phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated,Generic.PHP.DeprecatedFunctions.Deprecated
+			curl_close($handle);
+		}
+
+		$this->handle    = null;
+		$this->streaming = false;
+
+		return $handle;
 	}
 
 	/**
@@ -726,8 +754,19 @@ final class Curl implements Transport {
 		if ($this->streaming === true) {
 			// Buffer body bytes until the response headers arrive.
 			// Response\Stream takes over this write callback once the handle is handed off.
+			// Keep only what max_bytes allows, but acknowledge every byte to
+			// libcurl: returning a short count here would abort the transfer
+			// and surface as an error while the headers are still being read.
+			$data_length = strlen($data);
+			if ($this->response_byte_limit !== false) {
+				$remaining = $this->response_byte_limit - strlen($this->stream_buffer);
+				if ($remaining < $data_length) {
+					$data = (string) substr($data, 0, max(0, $remaining));
+				}
+			}
+
 			$this->stream_buffer .= $data;
-			return strlen($data);
+			return $data_length;
 		}
 
 		$this->hooks->dispatch('request.progress', [$data, $this->response_bytes, $this->response_byte_limit]);

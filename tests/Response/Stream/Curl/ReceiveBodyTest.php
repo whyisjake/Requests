@@ -28,6 +28,14 @@ final class ReceiveBodyTest extends TestCase {
 		$this->assertTrue($stream->eof(), 'Stream should be at EOF once max_bytes is reached');
 	}
 
+	public function testReceiveBodyRejectsEverythingOncePrebufferExceedsMaxBytes() {
+		$stream = $this->makeStream(3, 'hello');
+
+		$this->assertSame(0, $stream->receive_body(null, 'world'), 'No further bytes should be accepted');
+		$this->assertSame('hel', $stream->read(100), 'Only max_bytes of the prebuffer should be served');
+		$this->assertTrue($stream->eof());
+	}
+
 	public function testReceiveTrailerDiscardsData() {
 		$stream = $this->makeStream(false, 'abc');
 

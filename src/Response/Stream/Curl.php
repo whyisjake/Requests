@@ -50,11 +50,18 @@ final class Curl extends Stream {
 	private $idle_timeout;
 
 	/**
-	 * Body bytes received from cURL, but not yet returned to the caller.
+	 * Receive buffer shared with the cURL write callback.
 	 *
-	 * @var string
+	 * The callback registered on the cURL handle captures this object rather
+	 * than the stream itself, so the handle never holds a reference back to
+	 * the stream and the stream can be released by refcount. Holds:
+	 * - `buffer`    (string)    body bytes received but not yet returned to the caller
+	 * - `received`  (int)       total body bytes accepted from cURL, including prebuffered bytes
+	 * - `max_bytes` (int|false) maximum number of body bytes to accept
+	 *
+	 * @var \stdClass
 	 */
-	private $buffer = '';
+	private $sink;
 
 	/**
 	 * Whether the underlying transfer has finished.
@@ -78,11 +85,33 @@ final class Curl extends Stream {
 
 		$this->multi        = $multi;
 		$this->handle       = $handle;
-		$this->buffer       = (string) $prebuffered;
 		$this->idle_timeout = $idle_timeout;
 
-		curl_setopt($handle, CURLOPT_WRITEFUNCTION, [$this, 'receive_body']);
-		curl_setopt($handle, CURLOPT_HEADERFUNCTION, [$this, 'receive_trailer']);
+		$this->sink            = new \stdClass();
+		$this->sink->buffer    = (string) $prebuffered;
+		$this->sink->received  = strlen($this->sink->buffer);
+		$this->sink->max_bytes = $max_bytes;
+
+		// Register callbacks which capture only the sink, never $this: a
+		// callback holding the stream would create a stream -> handle ->
+		// callback -> stream cycle, and cURL handles which are resources
+		// (PHP < 8.0) are never collected by the cycle collector, so a stream
+		// dropped without close() would keep its connection open for good.
+		$sink = $this->sink;
+		curl_setopt(
+			$handle,
+			CURLOPT_WRITEFUNCTION,
+			static function ($handle, $data) use ($sink) {
+				return self::sink_body($sink, $data);
+			}
+		);
+		curl_setopt(
+			$handle,
+			CURLOPT_HEADERFUNCTION,
+			static function ($handle, $data) {
+				return strlen($data);
+			}
+		);
 	}
 
 	/**
@@ -105,17 +134,28 @@ final class Curl extends Stream {
 	 *             makes libcurl abort the transfer.
 	 */
 	public function receive_body($handle, $data) {
+		return self::sink_body($this->sink, $data);
+	}
+
+	/**
+	 * Append body data to the receive buffer, honouring the byte limit.
+	 *
+	 * @param \stdClass $sink Receive buffer, see {@see self::$sink}.
+	 * @param string    $data Body data received.
+	 * @return int Number of bytes accepted. Returning fewer bytes than
+	 *             received makes libcurl abort the transfer.
+	 */
+	private static function sink_body($sink, $data) {
 		$length = strlen($data);
 
-		if ($this->max_bytes !== false) {
-			$buffered = $this->bytes_read + strlen($this->buffer);
-			if (($buffered + $length) > $this->max_bytes) {
-				$length = $this->max_bytes - $buffered;
-				$data   = substr($data, 0, $length);
-			}
+		if ($sink->max_bytes !== false && ($sink->received + $length) > $sink->max_bytes) {
+			// The prebuffered bytes may already exceed the limit, hence the clamp.
+			$length = max(0, $sink->max_bytes - $sink->received);
+			$data   = (string) substr($data, 0, $length);
 		}
 
-		$this->buffer .= $data;
+		$sink->buffer   .= $data;
+		$sink->received += $length;
 
 		return $length;
 	}
@@ -132,7 +172,7 @@ final class Curl extends Stream {
 	protected function fetch($length) {
 		$deadline = microtime(true) + $this->idle_timeout;
 
-		while ($this->buffer === '' && $this->complete === false) {
+		while ($this->sink->buffer === '' && $this->complete === false) {
 			$running = 0;
 			do {
 				$status = curl_multi_exec($this->multi, $running);
@@ -145,10 +185,9 @@ final class Curl extends Stream {
 
 				$this->complete = true;
 
-				$bytes_received = $this->bytes_read + strlen($this->buffer);
 				if ($done['result'] === CURLE_WRITE_ERROR
 					&& $this->max_bytes !== false
-					&& $bytes_received >= $this->max_bytes
+					&& $this->sink->received >= $this->max_bytes
 				) {
 					continue;
 				}
@@ -163,7 +202,7 @@ final class Curl extends Stream {
 				}
 			}
 
-			if ($this->buffer !== '' || $this->complete === true) {
+			if ($this->sink->buffer !== '' || $this->complete === true) {
 				break;
 			}
 
@@ -187,8 +226,8 @@ final class Curl extends Stream {
 		}
 
 		// substr() can return false on PHP < 8.0, hence the casts.
-		$out          = (string) substr($this->buffer, 0, $length);
-		$this->buffer = (string) substr($this->buffer, strlen($out));
+		$out                = (string) substr($this->sink->buffer, 0, $length);
+		$this->sink->buffer = (string) substr($this->sink->buffer, strlen($out));
 
 		return $out;
 	}

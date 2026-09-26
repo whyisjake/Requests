@@ -201,6 +201,8 @@ class Response {
 	/**
 	 * Read from the streamed response body.
 	 *
+	 * @since 2.1.0
+	 *
 	 * @param int $length Optional. Maximum number of bytes to read.
 	 * @return string Body bytes, already de-chunked. An empty string indicates
 	 *                the end of the body.
@@ -235,6 +237,8 @@ class Response {
 
 	/**
 	 * Close the streamed response body.
+	 *
+	 * @since 2.1.0
 	 *
 	 * @return void
 	 */

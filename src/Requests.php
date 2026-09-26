@@ -765,6 +765,10 @@ class Requests {
 			$pos = strpos($headers, "\r\n\r\n");
 			if ($pos === false) {
 				// Crap!
+				if ($stream !== null) {
+					$stream->close();
+				}
+
 				throw new Exception('Missing header/body separator', 'requests.no_crlf_separator');
 			}
 
@@ -783,6 +787,10 @@ class Requests {
 		$headers = explode("\n", $headers);
 		preg_match('#^HTTP/(1\.\d)[ \t]+(\d+)#i', array_shift($headers), $matches);
 		if (empty($matches)) {
+			if ($stream !== null) {
+				$stream->close();
+			}
+
 			throw new Exception('Response could not be parsed', 'noversion', $headers);
 		}
 
@@ -847,6 +855,10 @@ class Requests {
 				$redirected->history[] = $return;
 				return $redirected;
 			} elseif ($options['redirected'] >= $options['redirects']) {
+				if ($stream !== null) {
+					$stream->close();
+				}
+
 				throw new Exception('Too many redirects', 'toomanyredirects', $return);
 			}
 		}

@@ -32,12 +32,58 @@ final class CloseTest extends TestCase {
 	}
 
 	public function testDestructorReleasesTheHandles() {
-		$stream = $this->makeStream('abc');
+		if (class_exists('WeakReference') === false) {
+			$this->markTestSkipped('WeakReference (PHP 7.4+) is needed to observe the stream being released');
+		}
 
+		$handle = curl_init('http://127.0.0.1:1/');
+		$multi  = curl_multi_init();
+		curl_multi_add_handle($multi, $handle);
+
+		$stream = new Curl($multi, $handle, 'abc', 1, false, new Hooks());
+		$weak   = \WeakReference::create($stream); // phpcs:ignore PHPCompatibility.Classes.NewClasses.weakreferenceFound -- Guarded by the class_exists() check above.
+
+		// Dropping the last reference must release the stream by refcount
+		// alone: no gc_collect_cycles() here on purpose. A callback on the
+		// cURL handle which referenced the stream would keep it alive.
 		unset($stream);
 
-		// The destructor ran without errors; nothing observable remains.
-		$this->assertTrue(true);
+		$this->assertNull($weak->get(), 'Stream should be destructed as soon as its last reference is dropped');
+
+		if (is_resource($handle)) {
+			// PHP < 8.0: handles are resources and are closed by the destructor.
+			$this->assertFalse(is_resource($handle), 'cURL easy handle should be closed on destruct');
+		}
+	}
+
+	public function testDroppedStreamReleasesTheConnection() {
+		if (class_exists('WeakReference') === false) {
+			$this->markTestSkipped('WeakReference (PHP 7.4+) is needed to observe the stream being released');
+		}
+
+		// A listener which accepts the connection but never responds.
+		$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+		$handle = curl_init('http://' . stream_socket_get_name($server, false) . '/');
+		curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 5);
+		$multi = curl_multi_init();
+		curl_multi_add_handle($multi, $handle);
+
+		$stream = new Curl($multi, $handle, '', 1, false, new Hooks());
+		$weak   = \WeakReference::create($stream); // phpcs:ignore PHPCompatibility.Classes.NewClasses.weakreferenceFound -- Guarded by the class_exists() check above.
+
+		try {
+			// Start the transfer so the callbacks are live on the handle.
+			$running = 0;
+			do {
+				$status = curl_multi_exec($multi, $running);
+			} while ($status === CURLM_CALL_MULTI_PERFORM);
+
+			unset($stream);
+
+			$this->assertNull($weak->get(), 'Stream with a live transfer should still be released by refcount');
+		} finally {
+			fclose($server);
+		}
 	}
 
 	/**
