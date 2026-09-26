@@ -111,4 +111,4 @@ jobs:
 
       # Run static analysis. The github error format annotates findings inline in PRs.
       - name: Run PHPStan
-        run: composer phpstan -- --no-progress --error-format=github
+        run: phpstan analyse --error-format=github

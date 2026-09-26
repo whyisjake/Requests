@@ -18,6 +18,7 @@ tests/             export-ignore
 phpdoc.dist.xml    export-ignore
 phpunit.xml.dist   export-ignore
 phpunit10.xml.dist export-ignore
+phpstan.neon.dist  export-ignore
 
 #
 # Auto detect text files and perform LF normalization
