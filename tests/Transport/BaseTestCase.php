@@ -37,7 +37,6 @@ abstract class BaseTestCase extends TestCase {
 
 		if (!$supported) {
 			$this->markTestSkipped($this->transport . ' is not available');
-			return;
 		}
 
 		$ssl_supported = $test_method([Capability::SSL => true]);
@@ -828,7 +827,6 @@ abstract class BaseTestCase extends TestCase {
 	public function testHTTPS() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$request = Requests::get($this->httpbin('/get', true), [], $this->getOptions());
@@ -841,7 +839,6 @@ abstract class BaseTestCase extends TestCase {
 	public function testExpiredHTTPS() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$this->expectException(Exception::class);
@@ -853,7 +850,6 @@ abstract class BaseTestCase extends TestCase {
 
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$this->expectException(Exception::class);
@@ -866,7 +862,6 @@ abstract class BaseTestCase extends TestCase {
 	public function testBadDomain() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$this->expectException(Exception::class);
@@ -876,7 +871,6 @@ abstract class BaseTestCase extends TestCase {
 	public function testBadDomainNoVerify() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$response = Requests::head('https://wrong.host.badssl.com/', [], $this->getOptions(['verify' => false]));
@@ -893,7 +887,6 @@ abstract class BaseTestCase extends TestCase {
 	public function testAlternateNameSupport() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$request = Requests::head('https://badssl.com/', [], $this->getOptions());
@@ -925,7 +918,6 @@ abstract class BaseTestCase extends TestCase {
 
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');
-			return;
 		}
 
 		$request = Requests::head('https://humanmade.com/', [], $this->getOptions($options));
