@@ -824,6 +824,19 @@ abstract class BaseTestCase extends TestCase {
 		Requests::get('http://256.256.256.0/', [], $this->getOptions());
 	}
 
+	/**
+	 * Verify that fractional timeout values are accepted and the request still succeeds.
+	 */
+	public function testFloatTimeoutOptions() {
+		$options = [
+			'timeout'         => 2.5,
+			'connect_timeout' => 2.5,
+		];
+		$request = Requests::get($this->httpbin('/get'), [], $this->getOptions($options));
+
+		$this->assertSame(200, $request->status_code);
+	}
+
 	public function testHTTPS() {
 		if ($this->skip_https) {
 			$this->markTestSkipped('SSL support is not available.');

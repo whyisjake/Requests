@@ -1,6 +1,7 @@
 parameters:
 	level: 5
 	bootstrapFiles:
+		- phpstan-bootstrap.php
 		- tests/bootstrap.php
 	paths:
 		- build/ghpages
